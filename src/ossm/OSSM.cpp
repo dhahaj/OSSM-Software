@@ -1,0 +1,150 @@
+#include "OSSM.h"
+
+#include "command/commands.hpp"
+#include "ossm/state/ble.h"
+#include "ossm/state/calibration.h"
+#include "ossm/state/menu.h"
+#include "ossm/state/session.h"
+#include "ossm/state/settings.h"
+#include "ossm/state/state.h"
+#include "services/communication/mqtt.h"
+#include "services/communication/queue.h"
+#include "services/encoder.h"
+#include "services/stepper.h"
+
+namespace sml = boost::sml;
+using namespace sml;
+
+// Global OSSM pointer (kept for backward compatibility during migration)
+OSSM *ossm = nullptr;
+
+// Static member definition - now forwards to global settings
+SettingPercents OSSM::setting = {.speed = 0,
+                                 .stroke = 50,
+                                 .sensation = 50,
+                                 .depth = 10,
+                                 .buffer = 100,
+                                 .pattern = StrokePatterns::SimpleStroke};
+
+OSSM::OSSM() {
+    // Initialize global state from OSSM::setting
+    settings = OSSM::setting;
+}
+
+void OSSM::ble_click(String commandString) {
+    CommandValue command = commandFromString(commandString);
+    ESP_LOGD("OSSM", "COMMAND: %d", command.command);
+
+    String currentState;
+    if (stateMachine != nullptr) {
+        stateMachine->visit_current_states(
+            [&currentState](auto state) { currentState = state.c_str(); });
+    }
+
+    switch (command.command) {
+        case Commands::goToStrokeEngine:
+            menuState.currentOption = Menu::StrokeEngine;
+            if (stateMachine != nullptr) {
+                stateMachine->process_event(ButtonPress{});
+            }
+            break;
+        case Commands::goToSimplePenetration:
+            menuState.currentOption = Menu::SimplePenetration;
+            if (stateMachine != nullptr) {
+                stateMachine->process_event(ButtonPress{});
+            }
+            break;
+        case Commands::goToStreaming:
+            menuState.currentOption = Menu::Streaming;
+            if (stateMachine != nullptr) {
+                stateMachine->process_event(ButtonPress{});
+            }
+            break;
+        case Commands::goToMenu:
+            if (stateMachine != nullptr) {
+                stateMachine->process_event(LongPress{});
+            }
+            break;
+        case Commands::setSpeed:
+            // BLE devices can be trusted to send true value
+            // and can bypass potentiomer smoothing logic
+            bleState.lastSpeedCommandWasFromBLE = true;
+            // Use speed knob config to determine how to handle BLE speed
+            // command
+            settings.speedBLE = command.value;
+            break;
+        case Commands::setStroke:
+            session.playControl = PlayControls::STROKE;
+            encoder.setEncoderValue(command.value);
+            settings.stroke = command.value;
+            break;
+        case Commands::setDepth:
+            session.playControl = PlayControls::DEPTH;
+            encoder.setEncoderValue(command.value);
+            settings.depth = command.value;
+            break;
+        case Commands::setSensation:
+            session.playControl = PlayControls::SENSATION;
+            encoder.setEncoderValue(command.value);
+            settings.sensation = command.value;
+            break;
+        case Commands::setBuffer:
+            session.playControl = PlayControls::BUFFER;
+            encoder.setEncoderValue(command.value);
+            settings.buffer = command.value;
+            break;
+        case Commands::setPattern:
+            settings.pattern = static_cast<StrokePatterns>(command.value % 7);
+            break;
+        case Commands::streamPosition:
+            // Position (0-100)
+            targetQueue.push({
+                static_cast<uint8_t>(command.value),
+                static_cast<uint16_t>(command.time),
+                std::chrono::steady_clock::now()});
+            break;
+        case Commands::setWifi:
+        case Commands::ignore:
+            break;
+    }
+}
+
+String OSSM::getStateFingerprint() {
+    String currentState;
+    if (stateMachine != nullptr) {
+        stateMachine->visit_current_states(
+            [&currentState](auto state) { currentState = state.c_str(); });
+    }
+
+    String output = currentState + ":";
+    output += String((int)settings.speed) + ":";
+    output += String((int)settings.stroke) + ":";
+    output += String((int)settings.sensation) + ":";
+    output += String((int)settings.depth) + ":";
+    output += String(static_cast<int>(settings.pattern)) + ":";
+    output += sessionId;
+    return output;
+}
+
+String OSSM::getCurrentState() {
+    String currentState;
+    if (stateMachine != nullptr) {
+        stateMachine->visit_current_states(
+            [&currentState](auto state) { currentState = state.c_str(); });
+    }
+
+    String json = "{";
+    json += "\"state\":\"" + currentState + "\",";
+    json += "\"speed\":" + String((int)settings.speed) + ",";
+    json += "\"stroke\":" + String((int)settings.stroke) + ",";
+    json += "\"sensation\":" + String((int)settings.sensation) + ",";
+    json += "\"buffer\":" + String((int)settings.buffer) + ",";
+    json += "\"depth\":" + String((int)settings.depth) + ",";
+    json += "\"pattern\":" + String(static_cast<int>(settings.pattern)) + ",";
+    json += "\"position\":" +
+            String(float(stepper->getCurrentPosition()) / float(1_mm)) + ",";
+    json += "\"sessionId\":\"" + sessionId + "\"";
+    json += "}";
+
+    return json;
+}
