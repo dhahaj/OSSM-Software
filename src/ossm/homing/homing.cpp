@@ -1,6 +1,5 @@
 #include "homing.h"
 
-#include "Strings.h"
 #include "constants/Config.h"
 #include "constants/Pins.h"
 #include "constants/UserConfig.h"
@@ -8,6 +7,7 @@
 #include "ossm/state/calibration.h"
 #include "ossm/state/error.h"
 #include "ossm/state/state.h"
+#include "services/current_sensor.h"
 #include "services/led.h"
 #include "services/stepper.h"
 #include "services/tasks.h"
@@ -18,7 +18,7 @@ using namespace sml;
 namespace homing {
 
 void clearHoming() {
-    ESP_LOGI("Homing", "=== Homing started ===");
+    ESP_LOGD("Homing", "Homing started");
 
     // Set homing active flag for LED indication
     setHomingActive(true);
@@ -32,6 +32,11 @@ void clearHoming() {
 
     // Clear the stored values.
     calibration.measuredStrokeSteps = 0;
+
+    // Recalibrate the current sensor offset (idle motor current in mA).
+    calibration.currentSensorOffset = getCurrentMilliAmps(200);
+    ESP_LOGI("Homing", "Current sensor idle offset: %.1f mA",
+             calibration.currentSensorOffset);
 }
 
 static void startHomingTask(void *pvParameters) {
@@ -48,14 +53,15 @@ static void startHomingTask(void *pvParameters) {
     // Stroke Engine and Simple Penetration treat this differently.
     stepper->enableOutputs();
     stepper->setDirectionPin(Pins::Driver::motorDirectionPin, false);
-    int16_t sign = stateMachine->is("homing.backward"_s) ? 1 : -1;
-    const char *phase = (sign == -1) ? "FORWARD" : "BACKWARD";
-    ESP_LOGI("Homing", "Phase: %s", phase);
+    // TEMP DEBUG: signs swapped so the first homing pass moves BACKWARD,
+    // to verify the backward direction actually moves at all.
+    // Revert to (backward ? 1 : -1) once confirmed.
+    int16_t sign = stateMachine->is("homing.backward"_s) ? -1 : 1;
 
     int32_t targetPositionInSteps =
         round(sign * Config::Driver::maxStrokeSteps);
 
-    ESP_LOGI("Homing", "Target position: %d steps", targetPositionInSteps);
+    ESP_LOGD("Homing", "Target position in steps: %d", targetPositionInSteps);
     stepper->moveTo(targetPositionInSteps, false);
 
     auto isInCorrectState = []() {
@@ -77,7 +83,7 @@ static void startHomingTask(void *pvParameters) {
 
         if (msPassed > 40000) {
             ESP_LOGE("Homing", "Homing took too long. Check power and restart");
-            errorState.message = ui::strings::homingTookTooLong;
+            errorState.message = UserConfig::language.HomingTookTooLong;
 
             // Clear homing active flag for LED indication
             setHomingActive(false);
@@ -86,15 +92,30 @@ static void startHomingTask(void *pvParameters) {
             break;
         }
 
-        // Read CL57Y ALM output — active LOW (pulled LOW on stall/alarm).
-        bool isAlmTriggered = digitalRead(Pins::Driver::almPin) == LOW;
+        // Measure motor current via INA219 (mA), minus the idle offset.
+        // Few samples on purpose: we must react in well under a second to
+        // back off before a closed-loop driver latches its position-error
+        // alarm and disables itself.
+        float current =
+            getCurrentMilliAmps(3) - calibration.currentSensorOffset;
 
-        if (!isAlmTriggered) {
-            vTaskDelay(5);
+        // Periodic debug print so the threshold can be tuned from logs.
+        static uint32_t lastLog = 0;
+        uint32_t now = millis();
+        if (now - lastLog > 200) {
+            ESP_LOGI("Homing", "Current: %.1f mA (limit %.1f)", current,
+                     Config::Driver::sensorlessCurrentLimit);
+            lastLog = now;
+        }
+        bool isCurrentOverLimit =
+            current > Config::Driver::sensorlessCurrentLimit;
+
+        if (!isCurrentOverLimit) {
+            vTaskDelay(10);  // Increased from 1ms to 10ms to reduce CPU load
             continue;
         }
 
-        ESP_LOGI("Homing", "ALM triggered — end-of-stroke detected at position %d steps", stepper->getCurrentPosition());
+        ESP_LOGD("Homing", "Current over limit: %f", current);
         stepper->stopMove();
 
         stepper->setSpeedInHz(250_mm);
@@ -107,9 +128,6 @@ static void startHomingTask(void *pvParameters) {
         calibration.measuredStrokeSteps =
             min(float(abs(stepper->getCurrentPosition())),
                 Config::Driver::maxStrokeSteps);
-
-        float strokeMm = calibration.measuredStrokeSteps / Config::Driver::stepsPerMM;
-        ESP_LOGI("Homing", "Measured stroke: %.1f mm (%.0f steps)", strokeMm, calibration.measuredStrokeSteps);
 
         stepper->setCurrentPosition(0);
         stepper->forceStopAndNewPosition(0);
@@ -124,7 +142,6 @@ static void startHomingTask(void *pvParameters) {
         // Clear homing active flag for LED indication
         setHomingActive(false);
 
-        ESP_LOGI("Homing", "=== Homing %s phase complete ===", phase);
         stateMachine->process_event(Done{});
         break;
     };
@@ -140,14 +157,10 @@ void startHoming() {
 }
 
 bool isStrokeTooShort() {
-    float strokeMm = calibration.measuredStrokeSteps / Config::Driver::stepsPerMM;
-    float minMm = Config::Driver::minStrokeLengthMm / Config::Driver::stepsPerMM;
     if (calibration.measuredStrokeSteps > Config::Driver::minStrokeLengthMm) {
-        ESP_LOGI("Homing", "Stroke validation passed: %.1f mm (min: %.1f mm)", strokeMm, minMm);
         return false;
     }
-    ESP_LOGE("Homing", "Stroke too short: %.1f mm (min: %.1f mm)", strokeMm, minMm);
-    errorState.message = ui::strings::strokeTooShort;
+    errorState.message = UserConfig::language.StrokeTooShort;
     return true;
 }
 
