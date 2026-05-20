@@ -6,8 +6,10 @@ bool USE_SPEED_KNOB_AS_LIMIT = true;
 void initBoard() {
     Serial.begin(115200);
 
-    pinMode(Pins::Remote::encoderSwitch,
-            INPUT_PULLDOWN);  // Rotary Encoder Pushbutton
+    // Rotary Encoder Pushbutton. GPIO 35 is input-only and has no internal
+    // pull resistors, so this is just plain INPUT -- the external pull-up to
+    // 3.3V on the remote board sets the idle level.
+    pinMode(Pins::Remote::encoderSwitch, INPUT);
 
     pinMode(Pins::GPIO::pin1, OUTPUT);
     pinMode(Pins::GPIO::pin2, OUTPUT);
