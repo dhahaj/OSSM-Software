@@ -50,6 +50,31 @@ static void startHomingTask(void *pvParameters) {
     return;
 #endif
 
+#ifdef FAKE_HOMING
+    // Bypass physical homing for bench testing without a hard stop / current
+    // sensor. Pretends the carriage homed cleanly with FAKE_STROKE_MM of
+    // usable travel and zeros position at the current physical location.
+    {
+        constexpr float fakeStrokeMm = FAKE_STROKE_MM;
+        calibration.measuredStrokeSteps =
+            min(float(fakeStrokeMm * Config::Driver::stepsPerMM),
+                Config::Driver::maxStrokeSteps);
+
+        stepper->enableOutputs();
+        stepper->setCurrentPosition(0);
+        stepper->forceStopAndNewPosition(0);
+
+        ESP_LOGW("Homing",
+                 "FAKE_HOMING active: pretending stroke = %.1f mm (%ld steps)",
+                 fakeStrokeMm, (long)calibration.measuredStrokeSteps);
+
+        setHomingActive(false);
+        stateMachine->process_event(Done{});
+        vTaskDelete(nullptr);
+        return;
+    }
+#endif
+
     // Stroke Engine and Simple Penetration treat this differently.
     stepper->enableOutputs();
     stepper->setDirectionPin(Pins::Driver::motorDirectionPin, false);
