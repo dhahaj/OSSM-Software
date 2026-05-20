@@ -31,23 +31,25 @@ namespace Pins {
     }
 
     namespace Driver {
-        // Pin that pulses on servo/stepper steps - labelled PUL on drivers.
-        constexpr int motorStepPin = 14;
-        // Pin connected to driver/servo step direction - labelled DIR on
+        // GPIO 36 was the legacy analog current sensor input; current sensing
+        // now uses an INA219 on the shared display I2C bus.
+
+        // Pin that pulses on servo/stepper steps - likely labelled PUL on
         // drivers.
+        constexpr int motorStepPin = 14;
+        // Pin connected to driver/servo step direction - likely labelled DIR on
+        // drivers. N.b. to iHSV57 users - DIP switch #5 can be flipped to
+        // invert motor direction entirely
         constexpr int motorDirectionPin = 27;
-        // Pin for motor enable - labelled ENA on drivers.
+        // Pin for motor enable - likely labelled ENA on drivers.
         constexpr int motorEnablePin = 26;
 
         // define the IO pin the emergency stop switch is connected to
         constexpr int stopPin = 19;
-
-        // CL57Y ALM (alarm) output — active LOW, open-collector.
-        // Goes LOW when the driver detects a stall (position error).
-        // Used during homing to detect end-of-stroke.
-        // Wiring: CL57Y ALM+ to 3.3V, ALM- to this pin.
-        // ESP32 internal pull-up keeps line HIGH when no alarm.
-        constexpr int almPin = 12;
+        // define the IO pin where the limit(homingStart) switch(es) are
+        // connected to (switches in series in normally open setup) Switches
+        // wired from IO pin to ground.
+        constexpr int limitSwitchPin = 12;
     }
 
     namespace Wifi {

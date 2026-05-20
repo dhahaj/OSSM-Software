@@ -91,8 +91,11 @@ Software/
 | DIR signal        | 27      | Stepper direction              |
 | Motor Enable      | 26      | Stepper enable (active low)    |
 | Home Switch       | 12      | Homing/calibration endstop     |
-| Display SCL       | 19      | I2C clock (shared with E-stop) |
-| Display SDA       | 21      | I2C data                       |
+| Display MOSI      | 21      | I2C data                       |
+| Display Clock     | 22      | OLED clock (SPI)               |
+| Display CS        | 15      | OLED chip select               |
+| Display DC        | 2       | OLED data/command              |
+| Display Reset     | 33      | OLED reset                     |
 | RGB LED           | 25      | WS2812B status LED             |
 | Speed Pot (ADC)   | 34      | Analog speed knob              |
 | Current Sensor    | 36      | Analog current monitoring      |

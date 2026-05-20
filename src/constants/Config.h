@@ -13,40 +13,38 @@ namespace Config {
 
     /**
             Motion System Config
-
-            Configured for: 23HS40-5004D-E1K-1M5 stepper (1.8°, 5A, 3Nm)
-                            CL57Y-V20 closed-loop driver (24-50VDC)
-
-            CL57Y DIP switch configuration:
-              SW1-SW4: Set peak current to 5.0A (match motor rated current)
-              SW5-SW8: Set to 800 pulses/rev (must match motorStepPerRevolution)
-              Refer to CL57Y manual DIP switch tables for exact positions.
-
-            Wiring: PUL+/PUL- to STEP, DIR+/DIR- to DIR, ENA+/ENA- to ENA
-            Encoder: Connect motor encoder cable directly to CL57Y encoder port
     */
     namespace Driver {
-        // Max speed of the device — limited by stepper torque curve.
-        // NEMA 23 steppers lose significant torque above ~800 RPM at 36-48V.
-        constexpr float maxRPM = 800.0f;
+        // Max speed of the device
+        constexpr float maxRPM = 1500.0f;
         // Number of teeth the pulley that is attached to the servo/stepper shaft has.
         constexpr float pulleyToothCount = 20.0f;
         // Set to your belt pitch (Distance between two teeth on the belt) (E.g.
         // GT2 belt has 2mm tooth pitch)
         constexpr float beltPitchMm = 2.0f;
-        // Pulses per revolution — must match the CL57Y DIP switch setting.
-        // Motor native: 200 steps/rev (1.8°), driver microstepping: 4x = 800.
+        // Top linear speed of the device.
         constexpr float motorStepPerRevolution = 800.0f;
-        // Top acceleration of the device in mm/s/s — reduced for stepper
-        // to prevent stalls under load. CL57Y closed-loop will recover from
-        // brief stalls, but aggressive accel causes jerky motion.
-        constexpr float maxAcceleration = 30000.0f;
-        // Top linear speed in mm/s
+        // Top acceleration of the device in mm/s/s
+        constexpr float maxAcceleration = 50000.0f;
+        // Number of steps to move the arm 1mm
         constexpr float maxSpeedMmPerSecond = maxRPM / 60.0 * pulleyToothCount * beltPitchMm;
-        // Steps per mm — derived from pulses/rev and belt/pulley geometry.
+        // This should match the step/rev of your stepper or servo.
+        // N.b. the iHSV57 has a table on the side for setting the DIP switches
+        // to your preference.
         constexpr float stepsPerMM = motorStepPerRevolution / (pulleyToothCount * beltPitchMm);
-        // Homing uses the CL57Y ALM (alarm) output to detect end-of-stroke.
-        // The ALM signal goes LOW when the driver detects a stall condition.
+        // Motor current threshold (mA, measured via INA219) above the idle
+        // offset that signals the carriage has hit a hard stop during homing.
+        //
+        // For closed-loop servo drivers (iHSV57 etc) this MUST trip well
+        // before the driver's own position-error alarm fires -- otherwise the
+        // driver disables its output stage when the alarm latches and no
+        // further homing motion is possible until power-cycle. Aim for the
+        // very start of the stall ramp, not the peak.
+        //
+        // Typical OSSM running-free current sits around 10-20 mA above idle;
+        // stall ramps up through 30-50 mA within ~100 ms. Pick a value that
+        // sits in that window with margin above the running-free peak.
+        constexpr float sensorlessCurrentLimit = 40.0f;
 
         namespace Operator {
             // Define user-defined literal for unsigned integer values

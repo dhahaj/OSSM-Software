@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "OneButton.h"
 #include "components/HeaderBar.h"
-#include "constants/Config.h"
 #include "esp_log.h"
 #include "ossm/Events.h"
 #include "ossm/OSSM.h"
@@ -9,6 +8,7 @@
 #include "services/board.h"
 #include "services/communication/mqtt.h"
 #include "services/communication/nimble.h"
+#include "services/current_sensor.h"
 #include "services/display.h"
 #include "services/encoder.h"
 #include "services/led.h"
@@ -37,21 +37,76 @@ using namespace sml;
 
 OneButton button(Pins::Remote::encoderSwitch, false);
 
+// ===== TEMP MOTOR DIRECTION TEST ============================================
+// Bypasses the state machine entirely. Pulses STEP continuously and flips DIR
+// every second. Watch the carriage: it should crawl one way for ~1 s, then
+// the other way for ~1 s, repeating forever.
+//
+// REMOVE THIS BLOCK (and the call from setup()) once direction is confirmed.
+// ============================================================================
+#define MOTOR_DIR_TEST 1
+#if MOTOR_DIR_TEST
+#include "constants/Pins.h"
+
+static void motorDirTestTask(void *) {
+    pinMode(Pins::Driver::motorStepPin, OUTPUT);
+    pinMode(Pins::Driver::motorDirectionPin, OUTPUT);
+    pinMode(Pins::Driver::motorEnablePin, OUTPUT);
+
+    // Enable the driver. Most stepper/servo drivers treat ENA as active-low.
+    // If your motor is silent during the test, try flipping this to HIGH.
+    digitalWrite(Pins::Driver::motorEnablePin, LOW);
+
+    bool dir = false;
+    uint32_t lastFlip = millis();
+    digitalWrite(Pins::Driver::motorDirectionPin, dir);
+    ESP_LOGI("DIRTEST", "Starting direction test. DIR=%d", dir);
+
+    // ~2 kHz step rate -> slow, audible crawl. Adjust delayMicroseconds
+    // values if you want it faster.
+    while (true) {
+        if (millis() - lastFlip >= 4000) {
+            dir = !dir;
+            digitalWrite(Pins::Driver::motorDirectionPin, dir);
+            lastFlip = millis();
+            ESP_LOGI("DIRTEST", "DIR flipped -> %d", dir);
+        }
+        digitalWrite(Pins::Driver::motorStepPin, HIGH);
+        delayMicroseconds(250);
+        digitalWrite(Pins::Driver::motorStepPin, LOW);
+        delayMicroseconds(250);
+    }
+}
+
+static void startMotorDirTest() {
+    xTaskCreatePinnedToCore(motorDirTestTask, "dirTest",
+                            4 * configMINIMAL_STACK_SIZE, nullptr,
+                            configMAX_PRIORITIES - 1, nullptr, 1);
+}
+#endif
+// ===== END TEMP MOTOR DIRECTION TEST ========================================
+
 void setup() {
     // Suppress verbose GPIO configuration logs
     esp_log_level_set("gpio", ESP_LOG_WARN);
 
+#if MOTOR_DIR_TEST
+    // Bring up just enough to drive the pins. Skip everything else.
+    ESP_LOGI("MAIN", "MOTOR_DIR_TEST mode -- skipping normal init");
+    startMotorDirTest();
+    return;
+#endif
+
     /** Board setup */
     initBoard();
 
-    ESP_LOGI("MAIN", "=== OSSM Starting ===");
-    ESP_LOGI("MAIN", "Motor: 23HS40-5004D (1.8deg, 5A)  Driver: CL57Y-V20");
-    ESP_LOGI("MAIN", "Steps/mm: %.1f  Max speed: %.0f mm/s  Max accel: %.0f mm/s^2",
-             Config::Driver::stepsPerMM, Config::Driver::maxSpeedMmPerSecond,
-             Config::Driver::maxAcceleration);
+    ESP_LOGD("MAIN", "Starting OSSM");
 
     // Display
     initDisplay();
+
+    // INA219 current sensor (shares the display I2C bus)
+    initCurrentSensor();
 
     // Initialize header bar task
     initHeaderBar();
@@ -91,7 +146,7 @@ void setup() {
                 if ((stateMachine->is("menu.idle"_s) ||
                      stateMachine->is("error.idle"_s)) &&
                     !initialized) {
-                    ESP_LOGI("MAIN", "Initializing BLE, WiFi, MQTT...");
+                    ESP_LOGD("MAIN", "Initializing communication services");
                     initNimble();
                     initWM();
                     initMQTT();

@@ -15,9 +15,6 @@ void initBoard() {
     pinMode(Pins::GPIO::pin4, OUTPUT);
 
     pinMode(Pins::Driver::motorEnablePin, OUTPUT);
-    // CL57Y ALM output: open-collector, active LOW on stall.
-    // Internal pull-up keeps line HIGH when no alarm.
-    pinMode(Pins::Driver::almPin, INPUT_PULLUP);
     pinMode(Pins::Wifi::resetPin, INPUT_PULLDOWN);
     pinMode(Pins::Remote::speedPotPin, INPUT);
     adcAttachPin(Pins::Remote::speedPotPin);
