@@ -35,7 +35,11 @@ using namespace sml;
  * contribute, fork, branch and share!
  */
 
-OneButton button(Pins::Remote::encoderSwitch, false);
+// OneButton(pin, activeLow, pullupActive). The remote PCB ties one side of the
+// switch to GND and uses an external pull-up to 3.3V on GPIO 35, so the line
+// idles HIGH and pulls LOW when pressed (active-low). pullupActive is false
+// because GPIO 35 is input-only and has no internal pull resistors regardless.
+OneButton button(Pins::Remote::encoderSwitch, true, false);
 
 // ===== TEMP MOTOR DIRECTION TEST ============================================
 // Bypasses the state machine entirely. Pulses STEP continuously and flips DIR
