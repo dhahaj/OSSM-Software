@@ -44,7 +44,7 @@ OneButton button(Pins::Remote::encoderSwitch, false);
 //
 // REMOVE THIS BLOCK (and the call from setup()) once direction is confirmed.
 // ============================================================================
-#define MOTOR_DIR_TEST 1
+#define MOTOR_DIR_TEST 0
 #if MOTOR_DIR_TEST
 #include "constants/Pins.h"
 
@@ -59,22 +59,20 @@ static void motorDirTestTask(void *) {
 
     bool dir = false;
     uint32_t lastFlip = millis();
-    digitalWrite(Pins::Driver::motorDirectionPin, dir);
     ESP_LOGI("DIRTEST", "Starting direction test. DIR=%d", dir);
 
     // ~2 kHz step rate -> slow, audible crawl. Adjust delayMicroseconds
     // values if you want it faster.
     while (true) {
-        if (millis() - lastFlip >= 4000) {
+        if (millis() - lastFlip >= 2000) {
             dir = !dir;
             digitalWrite(Pins::Driver::motorDirectionPin, dir);
+            digitalWrite(Pins::Driver::motorEnablePin, dir);  // Ensure driver is enabled
+            digitalWrite(Pins::Driver::motorStepPin, dir);
+
             lastFlip = millis();
             ESP_LOGI("DIRTEST", "DIR flipped -> %d", dir);
         }
-        digitalWrite(Pins::Driver::motorStepPin, HIGH);
-        delayMicroseconds(250);
-        digitalWrite(Pins::Driver::motorStepPin, LOW);
-        delayMicroseconds(250);
     }
 }
 
