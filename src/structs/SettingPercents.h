@@ -14,7 +14,8 @@ enum class StrokePatterns {
     YoYo,
     WaveOnWave,
     Slammin,
-    Struggle
+    Struggle,
+    Knot
 };
 
 struct SettingPercents {

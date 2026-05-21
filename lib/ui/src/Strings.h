@@ -124,12 +124,13 @@ namespace ui {
         static const char patternName8[] PROGMEM = "Wave on Wave";
         static const char patternName9[] PROGMEM = "Slammin";
         static const char patternName10[] PROGMEM = "Struggle";
+        static const char patternName11[] PROGMEM = "Knot";
 
-        static const char* const strokeEngineNames[11] = {
+        static const char* const strokeEngineNames[] = {
 patternName0, patternName1, patternName2,
 patternName3, patternName4, patternName5,
 patternName6, patternName7, patternName8,
-patternName9, patternName10
+patternName9, patternName10, patternName11
         };
 
         // ============================================================
@@ -162,12 +163,14 @@ patternName9, patternName10
             "speed.";
         static const char patternDesc10[] PROGMEM =
             "Struggles against the motor with random stroke and speed.";
+        static const char patternDesc11[] PROGMEM =
+            "Modification of Struggle with pauses and sensation-based slow crawl.";
 
-        static const char* const strokeEngineDescriptions[11] = {
+        static const char* const strokeEngineDescriptions[] = {
 patternDesc0, patternDesc1, patternDesc2,
 patternDesc3, patternDesc4, patternDesc5,
 patternDesc6, patternDesc7, patternDesc8,
-patternDesc9, patternDesc10
+patternDesc9, patternDesc10, patternDesc11
         };
 
     }  // namespace strings

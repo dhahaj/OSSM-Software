@@ -921,3 +921,91 @@ class Struggle : public Pattern {
             return _nextMove;
         }
 };
+
+/**************************************************************************/
+/*!
+  @brief  Knot: A modification of Struggle to add a pause at the end of
+  each in/out stroke and to use sensation to change the speed of the slow
+  portion rather than how much of the stroke is slow.
+
+  5-phase cycle:
+    Phase 0 (index % 5 == 0): Full speed retract (out stroke)
+    Phase 1 (index % 5 == 1): Partial in-stroke at 80% speed to 70% depth
+    Phase 2 (index % 5 == 2): Pause (delay based on speed curve)
+    Phase 3 (index % 5 == 3): Slow crawl to full depth (speed = sensation)
+    Phase 4 (index % 5 == 4): Pause again
+
+  Sensation: Controls the speed of the slow crawl portion.
+    Low values → very slow crawl (more dramatic)
+    High values → faster crawl (subtler effect)
+
+  Speed: The delay equation is: sqrt(350000 * speed + 60000) + 550 ms
+    This creates longer pauses at lower speeds (feels natural).
+
+  Original pattern by Serket (V1), tweaks by Vampix (V2).
+*/
+/**************************************************************************/
+class Knot : public Pattern {
+    public:
+        Knot(const char *str) : Pattern(str) {}
+
+        void setTimeOfStroke(float speed = 0) {
+            _timeOfStroke = 0.5 * speed;
+            _speed = speed;
+        }
+
+        void setSensation(float sensation) {
+            _sensation = float(abs(sensation) / 1000.0) + 0.001;
+        }
+
+        motionParameter nextTarget(unsigned int index) {
+            _nextMove.acceleration = int(3.0 * _nextMove.speed / _timeOfStroke);
+
+            // Calculate pause duration from speed using tuned sqrt curve
+            // Visualize in Desmos: Y = sqrt(350000*X + 60000) + 550
+            _delayInMillis = int((sqrt((350000.0 * _speed) + 60000.0)) + 550.0);
+
+            if (_isStillDelayed() == false) {
+                if (index % 5 == 1) {
+                    // Partial in-stroke: 80% speed to 70% of stroke depth
+                    _nextMove.acceleration = int(2.0 * _nextMove.speed / _timeOfStroke);
+                    _nextMove.speed = int(0.8 * _stroke / _timeOfStroke);
+                    _nextMove.stroke = int((_depth - _stroke) + (_stroke * 0.70));
+                }
+                else if (index % 5 == 2) {
+                    // Pause after partial in-stroke
+                    _startDelay();
+                }
+                else if (index % 5 == 3) {
+                    // Slow crawl to full depth — speed controlled by sensation
+                    _nextMove.acceleration = int(2.3 * _nextMove.speed / _timeOfStroke);
+                    _nextMove.speed = int(_sensation * _stroke / _timeOfStroke);
+                    _nextMove.stroke = _depth;
+#ifdef DEBUG_PATTERN
+                    Serial.println("Knot Speed: " + String(_speed));
+                    Serial.println("Knot Delay ms: " + String(_delayInMillis));
+#endif
+                }
+                else if (index % 5 == 4) {
+                    // Pause after completing in-stroke
+                    _startDelay();
+                }
+                else {
+                    // Phase 0: Full speed retract
+                    _nextMove.acceleration = int(2.0 * _nextMove.speed / _timeOfStroke);
+                    _nextMove.speed = int(1.0 * _stroke / _timeOfStroke);
+                    _nextMove.stroke = _depth - _stroke;
+                }
+                _nextMove.skip = false;
+            }
+            else {
+                _nextMove.skip = true;
+            }
+
+            _index = index;
+            return _nextMove;
+        }
+
+    protected:
+        float _speed;
+};

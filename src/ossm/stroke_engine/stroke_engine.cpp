@@ -119,6 +119,9 @@ static void startStrokeEngineTask(void *pvParameters) {
                 case StrokePatterns::Struggle:
                     Stroker.setPattern(new Struggle("Struggle"), false);
                     break;
+                case StrokePatterns::Knot:
+                    Stroker.setPattern(new Knot("Knot"), false);
+                    break;
                 default:
                     break;
             }
