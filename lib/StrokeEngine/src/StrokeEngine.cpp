@@ -195,7 +195,7 @@ bool StrokeEngine::setPattern(Pattern *NextPattern,
                               bool applyNow = false) {
     // Free up memory from previous pattern
 
-    // delete pattern;
+    delete pattern;
     pattern = NextPattern;
 
     // Inject current motion parameters into new pattern

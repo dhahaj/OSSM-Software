@@ -81,7 +81,7 @@ static void startHomingTask(void *pvParameters) {
     // TEMP DEBUG: signs swapped so the first homing pass moves BACKWARD,
     // to verify the backward direction actually moves at all.
     // Revert to (backward ? 1 : -1) once confirmed.
-    int16_t sign = stateMachine->is("homing.backward"_s) ? -1 : 1;
+    int16_t sign = stateMachine->is("homing.backward"_s) ? 1 : -1;
 
     int32_t targetPositionInSteps =
         round(sign * Config::Driver::maxStrokeSteps);
