@@ -90,7 +90,7 @@ namespace Pins {
         constexpr int displayData = 21;
         constexpr int displayClock = 19;
 #endif
-        constexpr int encoderStepsPerNotch = 2;
+        constexpr int encoderStepsPerNotch = 1;
     }
 }
 
