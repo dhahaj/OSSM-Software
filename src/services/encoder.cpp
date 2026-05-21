@@ -4,8 +4,8 @@
 // 6th arg = areEncoderPinsPulldown_forEsp32. false -> INPUT_PULLUP on A/B,
 // matching the remote PCB where the encoder common is wired to GND.
 AiEsp32RotaryEncoder encoder(
-    Pins::Remote::encoderB,
     Pins::Remote::encoderA,
+    Pins::Remote::encoderB,
     Pins::Remote::encoderSwitch,
     Pins::Remote::encoderPower,
     Pins::Remote::encoderStepsPerNotch,
