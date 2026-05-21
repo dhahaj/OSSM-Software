@@ -11,6 +11,10 @@ enum class StrokePatterns {
     Deeper,
     StopNGo,
     Insist,
+    YoYo,
+    WaveOnWave,
+    Slammin,
+    Struggle
 };
 
 struct SettingPercents {

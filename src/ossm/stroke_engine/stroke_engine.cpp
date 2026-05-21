@@ -107,6 +107,18 @@ static void startStrokeEngineTask(void *pvParameters) {
                 case StrokePatterns::Insist:
                     Stroker.setPattern(new Insist("Insist"), false);
                     break;
+                case StrokePatterns::YoYo:
+                    Stroker.setPattern(new YoYo("YoYo"), false);
+                    break;
+                case StrokePatterns::WaveOnWave:
+                    Stroker.setPattern(new WaveOnWave("Wave on Wave"), false);
+                    break;
+                case StrokePatterns::Slammin:
+                    Stroker.setPattern(new Slammin("Slammin"), false);
+                    break;
+                case StrokePatterns::Struggle:
+                    Stroker.setPattern(new Struggle("Struggle"), false);
+                    break;
                 default:
                     break;
             }

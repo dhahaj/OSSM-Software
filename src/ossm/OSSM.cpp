@@ -94,7 +94,7 @@ void OSSM::ble_click(String commandString) {
             settings.buffer = command.value;
             break;
         case Commands::setPattern:
-            settings.pattern = static_cast<StrokePatterns>(command.value % 7);
+            settings.pattern = static_cast<StrokePatterns>(command.value % 11);
             break;
         case Commands::streamPosition:
             // Position (0-100)
