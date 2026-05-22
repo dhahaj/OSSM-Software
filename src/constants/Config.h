@@ -44,7 +44,7 @@ namespace Config {
         // Typical OSSM running-free current sits around 10-20 mA above idle;
         // stall ramps up through 30-50 mA within ~100 ms. Pick a value that
         // sits in that window with margin above the running-free peak.
-        constexpr float sensorlessCurrentLimit = 40.0f;
+        constexpr float sensorlessCurrentLimit = 60.0f;
 
         namespace Operator {
             // Define user-defined literal for unsigned integer values
