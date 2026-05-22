@@ -24,7 +24,7 @@ SettingPercents OSSM::setting = {.speed = 0,
                                  .sensation = 50,
                                  .depth = 10,
                                  .buffer = 100,
-                                 .pattern = StrokePatterns::SimpleStroke};
+                                 .pattern = StrokePatterns::Insist};
 
 OSSM::OSSM() {
     // Initialize global state from OSSM::setting
