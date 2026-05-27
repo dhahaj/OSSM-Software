@@ -14,6 +14,7 @@
 #include "services/led.h"
 #include "services/stepper.h"
 #include "services/wm.h"
+#include "utils/update.h"
 
 namespace sml = boost::sml;
 using namespace sml;
@@ -91,6 +92,13 @@ static void startMotorDirTest() {
 void setup() {
     // Suppress verbose GPIO configuration logs
     esp_log_level_set("gpio", ESP_LOG_WARN);
+
+    // If the user requested an OTA on the previous boot, run it now on a
+    // clean heap before any other subsystem (BLE, WiFiManager portal,
+    // display, motor, state machine) initializes. Returns immediately if no
+    // OTA is pending; never returns if one is (reboots into new firmware on
+    // success, or back into normal boot on failure).
+    runPendingOTAIfRequested();
 
 #if MOTOR_DIR_TEST
     // Bring up just enough to drive the pins. Skip everything else.
