@@ -8,7 +8,7 @@ void initStepper() {
     stepperEngine.init();
     stepper = stepperEngine.stepperConnectToPin(Pins::Driver::motorStepPin);
     if (stepper) {
-        stepper->setDirectionPin(Pins::Driver::motorDirectionPin, true);
+        stepper->setDirectionPin(Pins::Driver::motorDirectionPin, false);
         stepper->setEnablePin(Pins::Driver::motorEnablePin, true);
         stepper->setAutoEnable(false);
         // Note: CL57Y requires >= 2.5μs pulse width. ESP32 FastAccelStepper

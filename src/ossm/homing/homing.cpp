@@ -77,7 +77,7 @@ static void startHomingTask(void *pvParameters) {
 
     // Stroke Engine and Simple Penetration treat this differently.
     stepper->enableOutputs();
-    stepper->setDirectionPin(Pins::Driver::motorDirectionPin, true);
+    stepper->setDirectionPin(Pins::Driver::motorDirectionPin, false);
     // TEMP DEBUG: signs swapped so the first homing pass moves BACKWARD,
     // to verify the backward direction actually moves at all.
     // Revert to (backward ? 1 : -1) once confirmed.
